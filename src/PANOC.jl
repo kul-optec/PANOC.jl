@@ -29,8 +29,10 @@ mutable struct PANOC_state{R <: Real}
     x   # iterate
     Ax  # A times x
     f_Ax::R   # value of smooth term
+	grad_f_Ax	# gradient of f at Ax
     At_grad_f_Ax    # gradient of smooth term
     gamma::R   # stepsize
+	y	# forward point
     z   # forward-backward point
     g_z::R # value of nonsmooth term (at z)
     res # fixed-point residual at iterate (= z - x)
@@ -70,7 +72,7 @@ function iterate(iter::PANOC_iterable{R}) where R
     # initialize variable metric
     H = LBFGS(x, iter.memory)
 
-    state = PANOC_state{R}(x, Ax, f_Ax, At_grad_f_Ax, gamma, z, g_z, res, H, nothing)
+    state = PANOC_state{R}(x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, nothing)
 
     return state, state
 end
@@ -88,9 +90,9 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 		tol = 10*eps(R)*(1 + abs(f_Az))
         if f_Az <= f_upp_Az + tol break end
         state.gamma *= 0.5
-        y = state.x - state.gamma .* state.At_grad_f_Ax
-        state.z, state.g_z = prox(iter.g, y, state.gamma)
-        state.res = state.x - state.z
+        state.y .= state.x .- state.gamma .* state.At_grad_f_Ax
+        state.g_z = prox!(state.z, iter.g, state.y, state.gamma)
+        state.res .= state.x .- state.z
         reset!(state.H)
         f_upp_Az = f_model(state)
     end
@@ -114,6 +116,7 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 	sigma = iter.beta * (0.5/state.gamma) * (1 - iter.alpha)
 
     for i = 1:10
+		# TODO write the next directly on the state (for efficiency)
         grad_f_Ax_new, f_Ax_new = gradient(iter.f, Ax_new)
         At_grad_f_Ax_new = iter.A' * grad_f_Ax_new
         y_new = x_new - state.gamma * At_grad_f_Ax_new
@@ -123,10 +126,13 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 
 		tol = 10*eps(R)*(1 + abs(FBE_x))
         if FBE_x_new <= FBE_x - sigma * norm(state.res)^2 + tol
+			# TODO write only what's left
             state.x = x_new
             state.Ax = Ax_new
 			state.f_Ax = f_Ax_new
+			state.grad_f_Ax = grad_f_Ax_new
             state.At_grad_f_Ax = At_grad_f_Ax_new
+			state.y = y_new
             state.z = z_new
             state.g_z = g_z_new
             state.res = res_new
@@ -139,8 +145,8 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
         end
 
         tau *= 0.5
-        x_new = state.x + tau * d - (1-tau) * state.res
-        Ax_new = state.Ax + tau * Ad - (1-tau) * Ares
+        x_new .= state.x .+ tau .* d .- (1-tau) .* state.res
+        Ax_new .= state.Ax .+ tau .* Ad .- (1-tau) .* Ares
     end
 
     @warn "stepsize `tau` became too small, stopping the iterations"
