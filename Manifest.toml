@@ -60,18 +60,18 @@ version = "0.5.1"
 
 [[MathProgBase]]
 deps = ["Compat"]
-git-tree-sha1 = "eb149595c386fcd68f51904ed2cdec6512bc4e46"
+git-tree-sha1 = "83b11194ca1c6353f39307f3221c804fff96350d"
 uuid = "fdba3010-5040-5b88-9595-932c9decdf73"
-version = "0.7.3"
+version = "0.7.5"
 
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[OSQP]]
-deps = ["BinDeps", "Compat", "Libdl", "MathOptInterface", "MathProgBase", "Random"]
-git-tree-sha1 = "f50374c963f1f9f43fe11999b844b15d7cdb3429"
+deps = ["BinDeps", "Compat", "Libdl", "MathOptInterface", "MathProgBase", "Pkg", "Random"]
+git-tree-sha1 = "13712f17323028d2dad5a38b9774292aeda496ae"
 uuid = "ab2f91bb-94b4-55e3-9ba0-7f65df51de79"
-version = "0.3.1"
+version = "0.3.2"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -82,10 +82,10 @@ deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [[ProximalOperators]]
-deps = ["IterativeSolvers", "LinearAlgebra", "OSQP", "Random", "SparseArrays", "SuiteSparse", "TSVD", "Test"]
-path = "/Users/stellalo/.julia/dev/ProximalOperators"
+deps = ["IterativeSolvers", "LinearAlgebra", "OSQP", "Pkg", "Random", "SparseArrays", "SuiteSparse", "TSVD", "Test"]
+git-tree-sha1 = "36653f895815acee29d1f590f474f90fe7f5daa1"
 uuid = "a725b495-10eb-56fe-b38b-717eba820537"
-version = "0.6.0+"
+version = "0.8.0"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
@@ -97,9 +97,9 @@ uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[RecipesBase]]
 deps = ["Pkg", "Random", "Test"]
-git-tree-sha1 = "b18c3d875ad6805e3db59c4e81f206f04df71d66"
+git-tree-sha1 = "0b3cb370ee4dc00f47f1193101600949f3dcf884"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "0.5.0"
+version = "0.6.0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
