@@ -11,8 +11,12 @@ const Maybe{T} = Union{T, Nothing}
 
 using ProximalOperators
 using Printf
+using Base.Iterators
 
-include("utils/LBFGS.jl")
+export panoc
+
+include("LBFGS.jl")
+include("IterativeMethodsTools.jl")
 
 struct PANOC_iterable{R <: Real}
     f   # smooth term
@@ -152,11 +156,6 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
     @warn "stepsize `tau` became too small, stopping the iterations"
     return nothing
 end
-
-using Base.Iterators
-include("utils/IterativeMethodsTools.jl")
-
-export panoc
 
 """
 	panoc(f, A, g, x0, [alpha, beta, L, memory, maxit, tol, verbose, freq])
