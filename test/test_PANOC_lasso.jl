@@ -49,9 +49,9 @@ Random.seed!(0)
         end
     end
 
-    @testset "PANOC(adaptive)" begin
+    @testset "PANOC(adaptive)" for verb=[false, true]
         for x0 in [[zeros(T, 5)]; [randn(T, 5) for k=1:4]]
-            x_panoc, it_panoc = panoc(f, A, g, x0, maxit=1000, tol=1e-8, verbose=false)
+            x_panoc, it_panoc = panoc(f, A, g, x0, maxit=1000, tol=1e-8, verbose=verb)
             @test x_panoc ≈ x_star
             @test it_panoc <= 50
         end
