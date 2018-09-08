@@ -120,7 +120,6 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 	sigma = iter.beta * (0.5/state.gamma) * (1 - iter.alpha)
 
     for i = 1:10
-		# TODO write the next directly on the state (for efficiency)
         grad_f_Ax_new, f_Ax_new = gradient(iter.f, Ax_new)
         At_grad_f_Ax_new = iter.A' * grad_f_Ax_new
         y_new = x_new - state.gamma * At_grad_f_Ax_new
@@ -130,18 +129,11 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 
 		tol = 10*eps(R)*(1 + abs(FBE_x))
         if FBE_x_new <= FBE_x - sigma * norm(state.res)^2 + tol
-			# TODO write only what's left
-            state.x = x_new
-            state.Ax = Ax_new
-			state.f_Ax = f_Ax_new
-			state.grad_f_Ax = grad_f_Ax_new
-            state.At_grad_f_Ax = At_grad_f_Ax_new
-			state.y = y_new
-            state.z = z_new
-            state.g_z = g_z_new
-            state.res = res_new
-            state.tau = tau
-            return state, state
+			state_new = PANOC_state{R}(
+				x_new, Ax_new, f_Ax_new, grad_f_Ax_new, At_grad_f_Ax_new,
+				state.gamma, y_new, z_new, g_z_new, res_new, state.H, tau
+			)
+            return state_new, state_new
         end
 
         if tau == one(R)
