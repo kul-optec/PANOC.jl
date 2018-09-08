@@ -26,6 +26,7 @@ struct PANOC_iterable{R <: Real}
     alpha::R   # in (0, 1), e.g.: 0.95
     beta::R   # in (0, 1), e.g.: 0.5
 	L::Maybe{R}	# Lipschitz constant of the gradient of x ↦ f(Ax)
+	adaptive::Bool	# enforce adaptive stepsize even if L is provided
 	memory	# memory parameter for L-BFGS
 end
 
@@ -85,7 +86,7 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 	f_upp_Az = f_model(state)
 
     # backtrack gamma (warn and halt if gamma gets too small)
-    while iter.L === nothing
+    while iter.L === nothing || iter.adaptive == true
         if state.gamma < 1e-7 # TODO: make this a parameter?
             @warn "parameter `gamma` became too small, stopping the iterations"
             return nothing
@@ -150,19 +151,28 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 end
 
 """
-	panoc(f, A, g, x0, [alpha, beta, L, memory, maxit, tol, verbose, freq])
+	panoc(f, A, g, x0, [L, adaptive, memory, maxit, tol, verbose, freq])
 
 Minimizes f(A*x) + g(x) with respect to x, starting from x0, using PANOC.
+Optional keyword arguments:
+* `L::Real` (default: `nothing`), the Lipschitz constant of the gradient of x ↦ f(Ax).
+* `adaptive::Bool` (default: `false`), if true, forces the method stepsize to be adaptively adjusted even if `L` is provided (this behaviour is always enforced if `L` is not provided).
+* `memory::Integer` (default: `5`), memory parameter for L-BFGS.
+* `maxit::Integer` (default: `1000`), maximum number of iterations to perform.
+* `tol::Real` (default: `1e-8`), absolute tolerance on the fixed-point residual.
+* `verbose::Bool` (default: `true`), whether or not to print information during the iterations.
+* `freq::Integer` (default: `10`), frequency of verbosity.
 """
 function panoc(f, A, g, x0;
-	alpha=0.95, beta=0.5, L=nothing, memory=5,
-	maxit=1000, tol=1e-8,
-	verbose=true, freq=10)
+	L=nothing, adaptive=false,
+	memory=5, maxit=1000, tol=1e-8,
+	verbose=true, freq=10,
+	alpha=0.95, beta=0.5)
 
 	stop(state::PANOC_state) = norm(state.res)/state.gamma <= tol
 	disp((it, state)) = @printf "%5d | %.3e | %.3e | %.3e\n" it state.gamma norm(state.res)/state.gamma (state.tau === nothing ? 0.0 : state.tau)
 
-	iter = PANOC_iterable(f, A, g, x0, alpha, beta, L, memory)
+	iter = PANOC_iterable(f, A, g, x0, alpha, beta, L, adaptive, memory)
 	iter = take(halt(iter, stop), maxit)
 	iter = enumerate(iter)
 	if verbose iter = tee(sample(iter, freq), disp) end

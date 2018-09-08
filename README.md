@@ -1,6 +1,7 @@
 # PANOC.jl
 
-PANOC is a Newton-type accelerated proximal gradient method for nonsmooth optimization: this repository contains its generic implementation in Julia.
+PANOC is a Newton-type accelerated proximal gradient method for nonsmooth
+optimization: this repository contains its generic implementation in Julia.
 
 ## Installation
 
@@ -34,8 +35,6 @@ All available options are described in the docstring, accessible with:
 julia> using PANOC
 julia> ?panoc
 ```
-
-## Examples
 
 ## References
 
