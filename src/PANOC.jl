@@ -158,11 +158,11 @@ include("utils/IterativeMethodsTools.jl")
 
 export panoc
 
-```
+"""
 	panoc(f, A, g, x0, [alpha, beta, L, memory, maxit, tol, verbose, freq])
 
 Minimizes f(A*x) + g(x) with respect to x, starting from x0, using PANOC.
-```
+"""
 function panoc(f, A, g, x0;
 	alpha=0.95, beta=0.5, L=nothing, memory=5,
 	maxit=1000, tol=1e-8,

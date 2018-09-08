@@ -12,10 +12,30 @@ pkg> add https://github.com/kul-forbes/PANOC.jl
 
 ## Quick guide
 
+PANOC solves optimization problems of the form
+
+```
+minimize f(Ax) + g(x)
+```
+
+where `x` is the decision variable, while
+* `f` is a smooth function, `g` is a function with easily computable
+proximal operator, both of which can be taken from
+[ProximalOperator.jl](https://github.com/kul-forbes/ProximalOperators.jl);
+* `A` is a linear mapping, e.g. a matrix or an object from linear operator
+packages such as
+[AbstractOperators.jl](https://github.com/kul-forbes/AbstractOperators.jl),
+[LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl),
+or [LinearOperators.jl](https://github.com/JuliaSmoothOptimizers/LinearOperators.jl).
+
+All available options are described in the docstring, accessible with:
+
 ```julia
 julia> using PANOC
 julia> ?panoc
 ```
+
+## Examples
 
 ## References
 
