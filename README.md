@@ -32,10 +32,17 @@ packages such as
 [LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl),
 or [LinearOperators.jl](https://github.com/JuliaSmoothOptimizers/LinearOperators.jl).
 
-All available options are described in the docstring, accessible with:
+The above problem is solved calling the `panoc` function:
 
 ```julia
 julia> using PANOC
+julia> panoc(f, A, g, x0)
+```
+
+where `x0` is the starting point of the iterations.
+The full list of options is described in the docstring, accessible with
+
+```julia
 julia> ?panoc
 ```
 
