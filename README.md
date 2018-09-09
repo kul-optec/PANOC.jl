@@ -36,10 +36,11 @@ The above problem is solved calling the `panoc` function:
 
 ```julia
 julia> using PANOC
-julia> panoc(f, A, g, x0)
+julia> x_opt, it = panoc(f, A, g, x0)
 ```
 
 where `x0` is the starting point of the iterations.
+This returns the optimal point found, and the number of iterations it took to find it.
 The full list of options is described in the docstring, accessible with
 
 ```julia
