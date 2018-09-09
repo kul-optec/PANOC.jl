@@ -39,6 +39,32 @@ julia> using PANOC
 julia> ?panoc
 ```
 
+## Citing
+
+If you use this package for your publications, please consider including the
+following BibTeX entries in the references
+
+```
+@inproceedings{stella2017simple,
+  author    = {Stella, Lorenzo and Themelis, Andreas and Sopasakis, Pantelis and Patrinos, Panagiotis},
+  title     = {A simple and efficient algorithm for nonlinear model predictive control},
+  booktitle = {56th IEEE Conference on Decision and Control (CDC)},
+  year      = {2017},
+  pages     = {1939-1944},
+  doi       = {10.1109/CDC.2017.8263933},
+  url       = {https://doi.org/10.1109/CDC.2017.8263933}
+}
+```
+
+```
+@misc{stella2018panoc,
+  author        = {Stella, Lorenzo},
+  title         = {{PANOC}.jl: {N}ewton-type accelerated proximal gradient method in Julia},
+  howpublished  = {\url{https://github.com/kul-forbes/PANOC.jl}},
+  year          = {2018}
+}
+```
+
 ## References
 
 Stella, Themelis, Sopasakis, Patrinos, [*A simple and efficient algorithm for nonlinear model predictive control*](https://doi.org/10.1109/CDC.2017.8263933), 56th IEEE Conference on Decision and Control (2017).
