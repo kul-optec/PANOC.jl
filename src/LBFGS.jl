@@ -4,9 +4,9 @@ mutable struct LBFGS{R <: Real, I <: Integer, T <: ArrayOrTuple{R}, M}
 	currmem::I
 	curridx::I
 	x_prev::Maybe{T}
-    g_prev::Maybe{T}
-    s::T
-    y::T
+	g_prev::Maybe{T}
+	s::T
+	y::T
 	s_M::Vector{T}
 	y_M::Vector{T}
 	ys_M::Vector{R}
@@ -15,21 +15,21 @@ mutable struct LBFGS{R <: Real, I <: Integer, T <: ArrayOrTuple{R}, M}
 end
 
 function LBFGS(x::T, M::I) where {R <: Real, I <: Integer, T <: ArrayOrTuple{R}}
-    s_M = [zero(x) for i = 1:M]
+	s_M = [zero(x) for i = 1:M]
 	y_M = [zero(x) for i = 1:M]
 	s = zero(x)
 	y = zero(x)
 	ys_M = zeros(R, M)
 	alphas = zeros(R, M)
-    LBFGS{R, I, T, M}(0, 0, nothing, nothing, s, y, s_M, y_M, ys_M, alphas, one(R))
+	LBFGS{R, I, T, M}(0, 0, nothing, nothing, s, y, s_M, y_M, ys_M, alphas, one(R))
 end
 
 function update!(L::LBFGS{R, I, T, M}, x, g) where {R, I, T, M}
-    if L.x_prev === nothing || L.g_prev === nothing
-        L.x_prev = x
-        L.g_prev = g
-        return L
-    end
+	if L.x_prev === nothing || L.g_prev === nothing
+		L.x_prev = x
+		L.g_prev = g
+		return L
+	end
 	L.s .= x .- L.x_prev
 	L.y .= g .- L.g_prev
 	ys = real(dot(L.s, L.y))
@@ -43,15 +43,15 @@ function update!(L::LBFGS{R, I, T, M}, x, g) where {R, I, T, M}
 		copyto!(L.y_M[L.curridx], L.y)
 		yty = real(dot(L.y, L.y))
 		L.H = ys/yty
-        L.x_prev = x
-        L.g_prev = g
+		L.x_prev = x
+		L.g_prev = g
 	end
 	return L
 end
 
 function reset!(L::LBFGS{R, I, T, M}) where {R, I, T, M}
 	L.currmem, L.curridx = zero(I), zero(I)
-    L.x_prev, L.g_prev= nothing, nothing
+	L.x_prev, L.g_prev= nothing, nothing
 	L.H = one(R)
 end
 
