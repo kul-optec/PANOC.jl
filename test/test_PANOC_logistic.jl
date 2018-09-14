@@ -1,4 +1,5 @@
 using Test
+using LinearAlgebra
 using PANOC
 using ProximalOperators
 

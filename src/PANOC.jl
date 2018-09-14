@@ -83,7 +83,8 @@ function iterate(iter::PANOC_iterable{R}) where R
 end
 
 function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
-	f_upp_Az = f_model(state)
+	f_Az_upp = f_model(state)
+	Az = nothing
 
 	# backtrack gamma (warn and halt if gamma gets too small)
 	while iter.L === nothing || iter.adaptive == true
@@ -91,19 +92,20 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 			@warn "parameter `gamma` became too small, stopping the iterations"
 			return nothing
 		end
-		grad_f_Az, f_Az = gradient(iter.f, iter.A*state.z)
+		Az = iter.A*state.z
+		grad_f_Az, f_Az = gradient(iter.f, Az)
 		tol = 10*eps(R)*(1 + abs(f_Az))
-		if f_Az <= f_upp_Az + tol break end
+		if f_Az <= f_Az_upp + tol break end
 		state.gamma *= 0.5
 		state.y .= state.x .- state.gamma .* state.At_grad_f_Ax
 		state.g_z = prox!(state.z, iter.g, state.y, state.gamma)
 		state.res .= state.x .- state.z
 		reset!(state.H)
-		f_upp_Az = f_model(state)
+		f_Az_upp = f_model(state)
 	end
 
 	# compute FBE
-	FBE_x = f_upp_Az + state.g_z
+	FBE_x = f_Az_upp + state.g_z
 
 	# update metric
 	update!(state.H, state.x, state.res)
@@ -113,10 +115,11 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 
 	# backtrack tau 1 → 0
 	Ad = iter.A * d
-	Ares = zero(Ad)
 	tau = one(R)
-	x_new = state.x + d
-	Ax_new = state.Ax + Ad
+	x_d = state.x + d
+	Ax_d = state.Ax + Ad
+	x_new = x_d
+	Ax_new = Ax_d
 
 	sigma = iter.beta * (0.5/state.gamma) * (1 - iter.alpha)
 
@@ -137,13 +140,13 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 			return state_new, state_new
 		end
 
-		if tau == one(R)
-			Ares = iter.A * state.res
+		if Az === nothing
+			Az = iter.A*state.z
 		end
 
 		tau *= 0.5
-		x_new .= state.x .+ tau .* d .- (1-tau) .* state.res
-		Ax_new .= state.Ax .+ tau .* Ad .- (1-tau) .* Ares
+		x_new = tau .* x_d .+ (1-tau) .* state.z
+		Ax_new = tau .* Ax_d .+ (1-tau) .* Az
 	end
 
 	@warn "stepsize `tau` became too small, stopping the iterations"
