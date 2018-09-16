@@ -83,8 +83,10 @@ function iterate(iter::PANOC_iterable{R}) where R
 end
 
 function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
+	Az, f_Az, grad_f_Az = nothing, nothing, nothing
+	At_grad_f_Az, a, b, c = nothing, nothing, nothing, nothing
+
 	f_Az_upp = f_model(state)
-	Az = nothing
 
 	# backtrack gamma (warn and halt if gamma gets too small)
 	while iter.L === nothing || iter.adaptive == true
@@ -114,18 +116,22 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 	d = -(state.H*state.res)
 
 	# backtrack tau 1 → 0
-	Ad = iter.A * d
 	tau = one(R)
+	Ad = iter.A * d
+
 	x_d = state.x + d
 	Ax_d = state.Ax + Ad
+	grad_f_Ax_d, f_Ax_d = gradient(iter.f, Ax_d)
+	At_grad_f_Ax_d = iter.A' * grad_f_Ax_d
+
 	x_new = x_d
 	Ax_new = Ax_d
+	grad_f_Ax_new, f_Ax_new = grad_f_Ax_d, f_Ax_d
+	At_grad_f_Ax_new = At_grad_f_Ax_d
 
 	sigma = iter.beta * (0.5/state.gamma) * (1 - iter.alpha)
 
 	for i = 1:10
-		grad_f_Ax_new, f_Ax_new = gradient(iter.f, Ax_new)
-		At_grad_f_Ax_new = iter.A' * grad_f_Ax_new
 		y_new = x_new - state.gamma * At_grad_f_Ax_new
 		z_new, g_z_new = prox(iter.g, y_new, state.gamma)
 		res_new = x_new - z_new
@@ -140,13 +146,32 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 			return state_new, state_new
 		end
 
-		if Az === nothing
-			Az = iter.A*state.z
-		end
+		if Az === nothing Az = iter.A * state.z end
 
 		tau *= 0.5
 		x_new = tau .* x_d .+ (1-tau) .* state.z
 		Ax_new = tau .* Ax_d .+ (1-tau) .* Az
+
+		if ProximalOperators.is_quadratic(iter.f)
+			# in case f is quadratic, we can compute its value and gradient
+			# along a line using interpolation and linear combinations
+			# this allows saving operations
+			if grad_f_Az === nothing grad_f_Az, f_Az = gradient(iter.f, Az) end
+			if At_grad_f_Az === nothing
+				At_grad_f_Az = iter.A' * grad_f_Az
+				c = f_Az
+				b = dot(Ax_d .- Az, grad_f_Az)
+				a = f_Ax_d - b - c
+			end
+			f_Ax_new = a * tau^2 + b * tau + c
+			grad_f_Ax_new = tau .* grad_f_Ax_d .+ (1-tau) .* grad_f_Az
+			At_grad_f_Ax_new = tau .* At_grad_f_Ax_d .+ (1-tau) .* At_grad_f_Az
+		else
+			# otherwise, in the general case where f is only smooth, we compute
+			# one gradient and matvec per backtracking step
+			grad_f_Ax_new, f_Ax_new = gradient(iter.f, Ax_new)
+			At_grad_f_Ax_new = iter.A' * grad_f_Ax_new
+		end
 	end
 
 	@warn "stepsize `tau` became too small, stopping the iterations"
