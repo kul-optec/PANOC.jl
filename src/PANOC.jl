@@ -18,31 +18,31 @@ export panoc
 include("LBFGS.jl")
 include("IterativeMethodsTools.jl")
 
-struct PANOC_iterable{R <: Real}
-	f   # smooth term
-	A   # matrix/linear operator
-	g   # (possibly) nonsmooth, proximable term
-	x0::ArrayOrTuple{R}  # initial point
-	alpha::R   # in (0, 1), e.g.: 0.95
-	beta::R   # in (0, 1), e.g.: 0.5
-	L::Maybe{R}	# Lipschitz constant of the gradient of x ↦ f(Ax)
-	adaptive::Bool	# enforce adaptive stepsize even if L is provided
-	memory	# memory parameter for L-BFGS
+struct PANOC_iterable{R <: Real, Tf, TA, Tg, Tx}
+	f::Tf             # smooth term
+	A::TA             # matrix/linear operator
+	g::Tg             # (possibly) nonsmooth, proximable term
+	x0::Tx            # initial point
+	alpha::R          # in (0, 1), e.g.: 0.95
+	beta::R           # in (0, 1), e.g.: 0.5
+	L::Maybe{R}       # Lipschitz constant of the gradient of x ↦ f(Ax)
+	adaptive::Bool    # enforce adaptive stepsize even if L is provided
+	memory::Int       # memory parameter for L-BFGS
 end
 
-mutable struct PANOC_state{R <: Real}
-	x   # iterate
-	Ax  # A times x
-	f_Ax::R   # value of smooth term
-	grad_f_Ax	# gradient of f at Ax
-	At_grad_f_Ax    # gradient of smooth term
-	gamma::R   # stepsize
-	y	# forward point
-	z   # forward-backward point
-	g_z::R # value of nonsmooth term (at z)
-	res # fixed-point residual at iterate (= z - x)
-	H::LBFGS{R}   # variable metric
-	tau::Maybe{R} # stepsize (can be nothing since the initial state doesn't have it)
+mutable struct PANOC_state{R <: Real, Tx, TAx}
+	x::Tx             # iterate
+	Ax::TAx           # A times x
+	f_Ax::R           # value of smooth term
+	grad_f_Ax::Tx     # gradient of f at Ax
+	At_grad_f_Ax::TAx # gradient of smooth term
+	gamma::R          # stepsize parameter of forward and backward steps
+	y::Tx             # forward point
+	z::Tx             # forward-backward point
+	g_z::R            # value of nonsmooth term (at z)
+	res::Tx           # fixed-point residual at iterate (= z - x)
+	H::LBFGS{R}       # variable metric
+	tau::Maybe{R}     # stepsize (can be nothing since the initial state doesn't have it)
 end
 
 f_model(f_x, grad_f_x, res, gamma) = f_x - real(dot(grad_f_x, res)) + (0.5/gamma)*norm(res)^2
@@ -77,12 +77,14 @@ function iterate(iter::PANOC_iterable{R}) where R
 	# initialize variable metric
 	H = LBFGS(x, iter.memory)
 
-	state = PANOC_state{R}(x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, nothing)
+	state = PANOC_state{R, typeof(x), typeof(Ax)}(
+		x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, nothing
+	)
 
 	return state, state
 end
 
-function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
+function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where {R, Tx, TAx}
 	Az, f_Az, grad_f_Az = nothing, nothing, nothing
 	At_grad_f_Az, a, b, c = nothing, nothing, nothing, nothing
 
@@ -139,7 +141,7 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R}) where R
 
 		tol = 10*eps(R)*(1 + abs(FBE_x))
 		if FBE_x_new <= FBE_x - sigma * norm(state.res)^2 + tol
-			state_new = PANOC_state{R}(
+			state_new = PANOC_state{R, Tx, TAx}(
 				x_new, Ax_new, f_Ax_new, grad_f_Ax_new, At_grad_f_Ax_new,
 				state.gamma, y_new, z_new, g_z_new, res_new, state.H, tau
 			)
