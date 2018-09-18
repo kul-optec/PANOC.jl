@@ -1,6 +1,7 @@
 name = "PANOC"
 uuid = "a62e81a4-a92b-11e8-35cb-2520f1b79ad9"
 authors = ["Lorenzo Stella <lorenzostella@gmail.com>"]
+version = "0.1.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
