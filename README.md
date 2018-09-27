@@ -26,7 +26,7 @@ minimize f(Ax) + g(x)
 where `x` is the decision variable, while
 * `f` is a smooth function, `g` is a function with easily computable
 proximal operator, both of which can be taken from
-[ProximalOperator.jl](https://github.com/kul-forbes/ProximalOperators.jl);
+[ProximalOperators.jl](https://github.com/kul-forbes/ProximalOperators.jl);
 * `A` is a linear mapping, e.g. a matrix or an object from linear operator
 packages such as
 [AbstractOperators.jl](https://github.com/kul-forbes/AbstractOperators.jl),
