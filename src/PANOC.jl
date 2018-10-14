@@ -93,7 +93,7 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 	# backtrack gamma (warn and halt if gamma gets too small)
 	while iter.L === nothing || iter.adaptive == true
 		if state.gamma < 1e-7 # TODO: make this a parameter?
-			@warn "parameter `gamma` became too small, stopping the iterations"
+			@warn "parameter `gamma` became too small ($(state.gamma)), stopping the iterations"
 			return nothing
 		end
 		Az = iter.A*state.z
@@ -176,7 +176,7 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 		end
 	end
 
-	@warn "stepsize `tau` became too small, stopping the iterations"
+	@warn "stepsize `tau` became too small ($(tau)), stopping the iterations"
 	return nothing
 end
 
@@ -199,8 +199,8 @@ function panoc(f, A, g, x0;
 	verbose=true, freq=10,
 	alpha=0.95, beta=0.5)
 
-	stop(state::PANOC_state) = norm(state.res)/state.gamma <= tol
-	disp((it, state)) = @printf "%5d | %.3e | %.3e | %.3e\n" it state.gamma norm(state.res)/state.gamma (state.tau === nothing ? 0.0 : state.tau)
+	stop(state::PANOC_state) = norm(state.res, Inf)/state.gamma <= tol
+	disp((it, state)) = @printf "%5d | %.3e | %.3e | %.3e\n" it state.gamma norm(state.res, Inf)/state.gamma (state.tau === nothing ? 0.0 : state.tau)
 
 	iter = PANOC_iterable(f, A, g, x0, alpha, beta, L, adaptive, memory)
 	iter = take(halt(iter, stop), maxit)
