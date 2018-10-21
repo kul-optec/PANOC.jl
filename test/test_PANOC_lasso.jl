@@ -7,7 +7,7 @@ using Random
 
 Random.seed!(0)
 
-@testset "Lasso" begin
+@testset "Lasso (tiny)" begin
 	T = Float64
 	A = T[
 		1.0  -2.0   3.0  -4.0  5.0;
@@ -20,12 +20,12 @@ Random.seed!(0)
 	f = Translate(SqrNormL2(), -b)
 	lam = 0.1*norm(A'*b, Inf)
 	g = NormL1(lam)
+	Lf = opnorm(A)^2
 	x_star = T[-3.877278911564627e-01, 0, 0, 2.174149659863943e-02, 6.168435374149660e-01]
 
 	@testset "Forward-backward envelope" begin
-		Lf = opnorm(A)^2
 		gamma = 0.95/Lf
-		for x in [[zeros(T, 5)]; [randn(T, 5) for k=1:4]]
+		for x in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
 			grad_f_Ax, f_Ax = gradient(f, A*x)
 			F_x = f_Ax + g(x)
 			At_grad_f_Ax = A'grad_f_Ax
@@ -43,18 +43,51 @@ Random.seed!(0)
 	end
 
 	@testset "PANOC(fixed)" begin
-		for x0 in [[zeros(T, 5)]; [randn(T, 5) for k=1:4]]
-			x_panoc, it_panoc = panoc(f, A, g, x0, L=opnorm(A)^2, maxit=1000, tol=1e-8, verbose=false)
+		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
+			x_panoc, it_panoc = panoc(f, A, g, x0, L=Lf, maxit=1000, tol=1e-8, verbose=false)
 			@test x_panoc ≈ x_star
 			@test it_panoc <= 50
 		end
 	end
 
 	@testset "PANOC(adaptive)" for verb=[false, true]
-		for x0 in [[zeros(T, 5)]; [randn(T, 5) for k=1:4]]
+		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
 			x_panoc, it_panoc = panoc(f, A, g, x0, maxit=1000, tol=1e-8, verbose=verb)
 			@test x_panoc ≈ x_star
 			@test it_panoc <= 50
+		end
+	end
+end
+
+@testset "Lasso" begin
+	T = Float64
+	A, b = randn(T, 200, 1000), randn(T, 200)
+	m, n = size(A)
+	f = Translate(SqrNormL2(), -b)
+	lam = 0.1*norm(A'*b, Inf)
+	g = NormL1(lam)
+	Lf = opnorm(A)^2
+
+	function optimality(x, A, b, lam, tol)
+		gam = 1.0/opnorm(A)^2
+		y = x - gam*(A'*(A*x - b))
+		z = sign.(y) .* max.(abs.(y) .- gam*lam, 0.0)
+		return norm(z - x, Inf)
+	end
+
+	@testset "PANOC(fixed)" begin
+		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
+			x_panoc, it_panoc = panoc(f, A, g, x0, L=Lf, maxit=1000, tol=1e-8, verbose=false)
+			@test optimality(x_panoc, A, b, lam, 1e-8) <= 1e-8
+			@test it_panoc < 1000
+		end
+	end
+
+	@testset "PANOC(adaptive)" begin
+		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
+			x_panoc, it_panoc = panoc(f, A, g, x0, maxit=1000, tol=1e-8, verbose=false)
+			@test optimality(x_panoc, A, b, lam, 1e-8) <= 1e-8
+			@test it_panoc < 1000
 		end
 	end
 end
