@@ -43,7 +43,19 @@ mutable struct PANOC_state{R <: Real, Tx, TAx}
 	res::Tx           # fixed-point residual at iterate (= z - x)
 	H::LBFGS{R}       # variable metric
 	tau::Maybe{R}     # stepsize (can be nothing since the initial state doesn't have it)
+	# some additional storage:
+	d::Tx
+	Ad::TAx
+	x_d::Tx
+	Ax_d::TAx
+	f_Ax_d::R
+	grad_f_Ax_d::Tx
+	At_grad_f_Ax_d::TAx
 end
+
+PANOC_state(x::Tx, Ax::TAx, f_Ax::R, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, tau) where {R, Tx, TAx} =
+	PANOC_state{R, Tx, TAx}(x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, tau,
+							zero(x), zero(Ax), zero(x), zero(Ax), zero(R), zero(Ax), zero(x))
 
 f_model(f_x, grad_f_x, res, gamma) = f_x - real(dot(grad_f_x, res)) + (0.5/gamma)*norm(res)^2
 
@@ -77,9 +89,7 @@ function iterate(iter::PANOC_iterable{R}) where R
 	# initialize variable metric
 	H = LBFGS(x, iter.memory)
 
-	state = PANOC_state{R, typeof(x), typeof(Ax)}(
-		x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, nothing
-	)
+	state = PANOC_state(x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, nothing)
 
 	return state, state
 end
@@ -115,44 +125,45 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 	update!(state.H, state.x, state.res)
 
 	# compute direction
-	d = -(state.H*state.res)
+	mul!(state.d, state.H, -state.res)
 
 	# backtrack tau 1 → 0
 	tau = one(R)
-	Ad = iter.A * d
+	mul!(state.Ad, iter.A, state.d)
 
-	x_d = state.x + d
-	Ax_d = state.Ax + Ad
-	grad_f_Ax_d, f_Ax_d = gradient(iter.f, Ax_d)
-	At_grad_f_Ax_d = iter.A' * grad_f_Ax_d
+	state.x_d .= state.x .+ state.d
+	state.Ax_d .= state.Ax .+ state.Ad
+	state.f_Ax_d = gradient!(state.grad_f_Ax_d, iter.f, state.Ax_d)
+	mul!(state.At_grad_f_Ax_d, adjoint(iter.A), state.grad_f_Ax_d)
 
-	x_new = x_d
-	Ax_new = Ax_d
-	grad_f_Ax_new, f_Ax_new = grad_f_Ax_d, f_Ax_d
-	At_grad_f_Ax_new = At_grad_f_Ax_d
+	state.x .= state.x_d
+	state.Ax .= state.Ax_d
+	state.f_Ax = state.f_Ax_d
+	state.grad_f_Ax .= state.grad_f_Ax_d
+	state.At_grad_f_Ax .= state.At_grad_f_Ax_d
+
+	z_curr = copy(state.z)
 
 	sigma = iter.beta * (0.5/state.gamma) * (1 - iter.alpha)
+	tol = 10*eps(R)*(1 + abs(FBE_x))
+	threshold = FBE_x - sigma * norm(state.res)^2 + tol
 
 	for i = 1:10
-		y_new = x_new - state.gamma * At_grad_f_Ax_new
-		z_new, g_z_new = prox(iter.g, y_new, state.gamma)
-		res_new = x_new - z_new
-		FBE_x_new = f_model(f_Ax_new, At_grad_f_Ax_new, res_new, state.gamma) + g_z_new
+		state.y .= state.x .- state.gamma .* state.At_grad_f_Ax
+		state.g_z = prox!(state.z, iter.g, state.y, state.gamma)
+		state.res .= state.x .- state.z
+		FBE_x_new = f_model(state) + state.g_z
 
-		tol = 10*eps(R)*(1 + abs(FBE_x))
-		if FBE_x_new <= FBE_x - sigma * norm(state.res)^2 + tol
-			state_new = PANOC_state{R, Tx, TAx}(
-				x_new, Ax_new, f_Ax_new, grad_f_Ax_new, At_grad_f_Ax_new,
-				state.gamma, y_new, z_new, g_z_new, res_new, state.H, tau
-			)
-			return state_new, state_new
+		if FBE_x_new <= threshold
+			state.tau = tau
+			return state, state
 		end
 
-		if Az === nothing Az = iter.A * state.z end
+		if Az === nothing Az = iter.A * z_curr end
 
 		tau *= 0.5
-		x_new = tau .* x_d .+ (1-tau) .* state.z
-		Ax_new = tau .* Ax_d .+ (1-tau) .* Az
+		state.x .= tau .* state.x_d .+ (1-tau) .* z_curr
+		state.Ax .= tau .* state.Ax_d .+ (1-tau) .* Az
 
 		if ProximalOperators.is_quadratic(iter.f)
 			# in case f is quadratic, we can compute its value and gradient
@@ -162,17 +173,17 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 			if At_grad_f_Az === nothing
 				At_grad_f_Az = iter.A' * grad_f_Az
 				c = f_Az
-				b = dot(Ax_d .- Az, grad_f_Az)
-				a = f_Ax_d - b - c
+				b = dot(state.Ax_d .- Az, grad_f_Az)
+				a = state.f_Ax_d - b - c
 			end
-			f_Ax_new = a * tau^2 + b * tau + c
-			grad_f_Ax_new = tau .* grad_f_Ax_d .+ (1-tau) .* grad_f_Az
-			At_grad_f_Ax_new = tau .* At_grad_f_Ax_d .+ (1-tau) .* At_grad_f_Az
+			state.f_Ax = a * tau^2 + b * tau + c
+			state.grad_f_Ax = tau .* state.grad_f_Ax_d .+ (1-tau) .* grad_f_Az
+			state.At_grad_f_Ax = tau .* state.At_grad_f_Ax_d .+ (1-tau) .* At_grad_f_Az
 		else
 			# otherwise, in the general case where f is only smooth, we compute
 			# one gradient and matvec per backtracking step
-			grad_f_Ax_new, f_Ax_new = gradient(iter.f, Ax_new)
-			At_grad_f_Ax_new = iter.A' * grad_f_Ax_new
+			state.f_Ax = gradient!(state.grad_f_Ax, iter.f, state.Ax)
+			mul!(state.At_grad_f_Ax, adjoint(iter.A), state.grad_f_Ax)
 		end
 	end
 

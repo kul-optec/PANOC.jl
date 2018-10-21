@@ -26,8 +26,8 @@ end
 
 function update!(L::LBFGS{R, I, T, M}, x, g) where {R, I, T, M}
 	if L.x_prev === nothing || L.g_prev === nothing
-		L.x_prev = x
-		L.g_prev = g
+		L.x_prev = copy(x)
+		L.g_prev = copy(g)
 		return L
 	end
 	L.s .= x .- L.x_prev
@@ -43,15 +43,15 @@ function update!(L::LBFGS{R, I, T, M}, x, g) where {R, I, T, M}
 		copyto!(L.y_M[L.curridx], L.y)
 		yty = real(dot(L.y, L.y))
 		L.H = ys/yty
-		L.x_prev = x
-		L.g_prev = g
+		L.x_prev .= x
+		L.g_prev .= g
 	end
 	return L
 end
 
 function reset!(L::LBFGS{R, I, T, M}) where {R, I, T, M}
 	L.currmem, L.curridx = zero(I), zero(I)
-	L.x_prev, L.g_prev= nothing, nothing
+	L.x_prev, L.g_prev = nothing, nothing
 	L.H = one(R)
 end
 
