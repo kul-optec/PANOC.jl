@@ -68,17 +68,17 @@ end
 	g = NormL1(lam)
 	Lf = opnorm(A)^2
 
-	function optimality(x, A, b, lam, tol)
+	function fixed_point_residual(x, A, b, lam)
 		gam = 1.0/opnorm(A)^2
 		y = x - gam*(A'*(A*x - b))
 		z = sign.(y) .* max.(abs.(y) .- gam*lam, 0.0)
-		return norm(z - x, Inf)
+		return z - x
 	end
 
 	@testset "PANOC(fixed)" begin
 		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
 			x_panoc, it_panoc = panoc(f, A, g, x0, L=Lf, maxit=1000, tol=1e-8, verbose=false)
-			@test optimality(x_panoc, A, b, lam, 1e-8) <= 1e-8
+			@test norm(fixed_point_residual(x_panoc, A, b, lam), Inf) <= 1e-8
 			@test it_panoc < 1000
 		end
 	end
@@ -86,7 +86,7 @@ end
 	@testset "PANOC(adaptive)" begin
 		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
 			x_panoc, it_panoc = panoc(f, A, g, x0, maxit=1000, tol=1e-8, verbose=false)
-			@test optimality(x_panoc, A, b, lam, 1e-8) <= 1e-8
+			@test norm(fixed_point_residual(x_panoc, A, b, lam), Inf) <= 1e-8
 			@test it_panoc < 1000
 		end
 	end
