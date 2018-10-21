@@ -51,11 +51,12 @@ mutable struct PANOC_state{R <: Real, Tx, TAx}
 	f_Ax_d::R
 	grad_f_Ax_d::Tx
 	At_grad_f_Ax_d::TAx
+	z_curr::Tx
 end
 
 PANOC_state(x::Tx, Ax::TAx, f_Ax::R, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, tau) where {R, Tx, TAx} =
 	PANOC_state{R, Tx, TAx}(x, Ax, f_Ax, grad_f_Ax, At_grad_f_Ax, gamma, y, z, g_z, res, H, tau,
-							zero(x), zero(Ax), zero(x), zero(Ax), zero(R), zero(Ax), zero(x))
+							zero(x), zero(Ax), zero(x), zero(Ax), zero(R), zero(Ax), zero(x), zero(x))
 
 f_model(f_x, grad_f_x, res, gamma) = f_x - real(dot(grad_f_x, res)) + (0.5/gamma)*norm(res)^2
 
@@ -95,8 +96,8 @@ function iterate(iter::PANOC_iterable{R}) where R
 end
 
 function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where {R, Tx, TAx}
-	Az, f_Az, grad_f_Az = nothing, nothing, nothing
-	At_grad_f_Az, a, b, c = nothing, nothing, nothing, nothing
+	Az, f_Az, grad_f_Az, At_grad_f_Az = nothing, nothing, nothing, nothing
+	a, b, c = nothing, nothing, nothing
 
 	f_Az_upp = f_model(state)
 
@@ -142,7 +143,7 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 	state.grad_f_Ax .= state.grad_f_Ax_d
 	state.At_grad_f_Ax .= state.At_grad_f_Ax_d
 
-	z_curr = copy(state.z)
+	copyto!(state.z_curr, state.z)
 
 	sigma = iter.beta * (0.5/state.gamma) * (1 - iter.alpha)
 	tol = 10*eps(R)*(1 + abs(FBE_x))
@@ -159,10 +160,10 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 			return state, state
 		end
 
-		if Az === nothing Az = iter.A * z_curr end
+		if Az === nothing Az = iter.A * state.z_curr end
 
 		tau *= 0.5
-		state.x .= tau .* state.x_d .+ (1-tau) .* z_curr
+		state.x .= tau .* state.x_d .+ (1-tau) .* state.z_curr
 		state.Ax .= tau .* state.Ax_d .+ (1-tau) .* Az
 
 		if ProximalOperators.is_quadratic(iter.f)
@@ -177,8 +178,8 @@ function iterate(iter::PANOC_iterable{R}, state::PANOC_state{R, Tx, TAx}) where 
 				a = state.f_Ax_d - b - c
 			end
 			state.f_Ax = a * tau^2 + b * tau + c
-			state.grad_f_Ax = tau .* state.grad_f_Ax_d .+ (1-tau) .* grad_f_Az
-			state.At_grad_f_Ax = tau .* state.At_grad_f_Ax_d .+ (1-tau) .* At_grad_f_Az
+			state.grad_f_Ax .= tau .* state.grad_f_Ax_d .+ (1-tau) .* grad_f_Az
+			state.At_grad_f_Ax .= tau .* state.At_grad_f_Ax_d .+ (1-tau) .* At_grad_f_Az
 		else
 			# otherwise, in the general case where f is only smooth, we compute
 			# one gradient and matvec per backtracking step
