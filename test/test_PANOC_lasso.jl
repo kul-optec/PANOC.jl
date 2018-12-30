@@ -2,6 +2,7 @@ using Test
 using LinearAlgebra
 using PANOC
 using ProximalOperators
+using RecursiveArrayTools: ArrayPartition, unpack
 
 using Random
 
@@ -42,7 +43,7 @@ Random.seed!(0)
 		end
 	end
 
-	@testset "PANOC(fixed)" begin
+	@testset "PANOC (fixed)" begin
 		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
 			x_panoc, it_panoc = panoc(f, A, g, x0, L=Lf, maxit=1000, tol=1e-8, verbose=false)
 			@test x_panoc ≈ x_star
@@ -50,16 +51,31 @@ Random.seed!(0)
 		end
 	end
 
-	@testset "PANOC(adaptive)" for verb=[false, true]
+	@testset "PANOC (adaptive)" for verb=[false, true]
 		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
 			x_panoc, it_panoc = panoc(f, A, g, x0, maxit=1000, tol=1e-8, verbose=verb)
 			@test x_panoc ≈ x_star
 			@test it_panoc <= 50
 		end
 	end
+
+	@testset "PANOC (with separable sum, take 1)" begin
+		f_alt = LeastSquares(A, b)
+		f_twice = SeparableSum(f_alt, f_alt)
+		g_twice = SeparableSum(g, g)
+
+		for x0 in [[zeros(T, n)]; [randn(T, n) for k=1:4]]
+			x0_twice = ArrayPartition(x0, x0)
+			x_panoc, it_panoc = panoc(f_twice, I, g_twice, x0_twice, maxit=1000, tol=1e-8, verbose=false)
+			@test unpack(x_panoc, 1) ≈ x_star
+			@test unpack(x_panoc, 2) ≈ x_star
+			@test it_panoc <= 50
+		end
+	end
+
 end
 
-@testset "Lasso" begin
+@testset "Lasso (medium)" begin
 	T = Float64
 	A, b = randn(T, 200, 1000), randn(T, 200)
 	m, n = size(A)
