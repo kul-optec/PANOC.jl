@@ -59,7 +59,7 @@ Random.seed!(0)
 		end
 	end
 
-	@testset "PANOC (with separable sum, take 1)" begin
+	@testset "PANOC (with ArrayPartition, take 1)" begin
 		f_alt = LeastSquares(A, b)
 		f_twice = SeparableSum(f_alt, f_alt)
 		g_twice = SeparableSum(g, g)

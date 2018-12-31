@@ -1,6 +1,7 @@
 using Test
 using LinearAlgebra
 using PANOC: LBFGS, update!
+using RecursiveArrayTools: ArrayPartition, unpack
 
 @testset "L-BFGS" begin
 
@@ -104,7 +105,19 @@ using PANOC: LBFGS, update!
 		end
 	end
 
-	@testset "Tuples" begin
-		# TODO: fill-in here
+	@testset "ArrayPartition" begin
+		mem = 3
+		x = ArrayPartition(zeros(10), zeros(10))
+		H = LBFGS(x, mem)
+		dir  = ArrayPartition(zeros(10), zeros(10))
+		for i = 1:5
+			x = ArrayPartition(xs[i], xs[i])
+			temp = Q*unpack(x, 1) + q
+			grad = ArrayPartition(temp, temp)
+			update!(H, x, grad)
+			mul!(dir, H, -grad)
+			@test unpack(dir, 1) ≈ dirs_ref[i]
+			@test unpack(dir, 2) ≈ dirs_ref[i]
+		end
 	end
 end
