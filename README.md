@@ -7,6 +7,8 @@
 PANOC is a Newton-type accelerated proximal gradient method for nonsmooth
 optimization: this repository contains its generic implementation in Julia.
 
+**Deprecated: an up-to-date implementation of the same algorithm is available as part of [ProximalAlgorithms.jl](https://github.com/kul-forbes/ProximalAlgorithms.jl).**
+
 ## Installation
 
 From the Julia REPL, hit `]` to enter the package manager, then
